@@ -7,10 +7,10 @@ class PearsonCorrelationTest extends FunSuite with Matchers {
 
   test("should properly count correlation") {
 
-    val first = Seq(2.0, 5.0, 7.0, 1.0, 8.0).map(Option(_)).asInstanceOf[Seq[Option[Double]]]
-    val second = Seq(4.0, 3.0, 6.0, 1.0, 5.0).map(Option(_))
+    val first = Seq(null, 2.0, 5.0, 7.0, 1.0, 8.0)
+    val second = Seq(2.0, 4.0, 3.0, 6.0, 1.0, 5.0)
 
-    PearsonCorrelation.compute(first, second) shouldEqual 0.7927
+    PearsonCorrelation.compute(toOptional(first), toOptional(second)) shouldEqual 0.7927
   }
 
   test("should properly compute 2 same dataset") {
@@ -23,5 +23,13 @@ class PearsonCorrelationTest extends FunSuite with Matchers {
     val second = Seq(-1.0, 6.0).map(Option(_))
 
     PearsonCorrelation.compute(first, second) shouldEqual -1.0
+  }
+
+
+  def toOptional[T](a: Seq[T]): Seq[Option[Double]] = {
+    a.collect {
+      case null => None
+      case x: Double => Some(x)
+    }
   }
 }

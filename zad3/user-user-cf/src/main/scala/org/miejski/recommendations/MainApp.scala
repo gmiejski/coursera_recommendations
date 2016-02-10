@@ -21,7 +21,6 @@ object MainApp {
       .option("inferSchema", "true") // Automatically infer data types
       .load("src/main/resources/coursera_recommendations_user-row.csv")
 
-    //    dataframe.map(r => r.toSeq.asInstanceOf[Seq[Double]]).collect()
     val ratings = dataframe.map(row => row.toSeq.map(s => s match {
       case x: String => if (x.length > 0) x.replaceAll("\"", "").replaceAll(",", ".").toDouble else null
       case _ => null
