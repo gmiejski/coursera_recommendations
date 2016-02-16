@@ -1,8 +1,9 @@
 package org.miejski.recommendations
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 import org.apache.spark.{SparkConf, SparkContext}
-import org.miejski.recommendations.correlation.PearsonCorrelation
+import org.miejski.recommendations.neighbours.Neighbours
 
 class MainApp {
 
@@ -21,24 +22,19 @@ object MainApp {
       .option("inferSchema", "true") // Automatically infer data types
       .load("src/main/resources/coursera_recommendations_user-row.csv")
 
-    val ratings = dataframe.map(row => row.toSeq.map(s => s match {
-      case x: String => if (x.length > 0) Some(x.replaceAll("\"", "").replaceAll(",", ".").toDouble) else None
-      case _ => None
-    }))
-
     val usersRatings = dataframe.rdd.map(parseRatings)
     val joinedUsers = usersRatings.cartesian(usersRatings).cache()
-    val uniqueMappings = joinedUsers.map(r => (r._1._1, r._2._1))
+    val uM: RDD[(String, String)] = joinedUsers.map(r => (r._1._1, r._2._1))
       .map(toSortedUserJoin)
       .distinct()
-      .map(r => (r, None)) // for join with correlations
-    assert(uniqueMappings.count() == 325)
 
-    val lengths = joinedUsers.map(s => (s._1._2.length, s._2._2.length)).collect()
-    val correlations = joinedUsers.map(ratings => ((ratings._1._1, ratings._2._1), PearsonCorrelation.compute(ratings._1._2, ratings._2._2)))
-    val uniqueUsersCorrelations = uniqueMappings.join(correlations).map(s => (s._1, s._2._2))
+    val neighbours = Neighbours(usersRatings, uM)
 
+    neighbours.printNeighbours("3867")
+    neighbours.printNeighbours("89")
+    neighbours.printNeighbours("3712")
 
+    println()
   }
 
   def toSortedUserJoin(userIds: (String, String)): (String, String) = {
