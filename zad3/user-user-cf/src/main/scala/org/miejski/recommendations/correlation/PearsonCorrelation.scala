@@ -1,5 +1,7 @@
 package org.miejski.recommendations.correlation
 
+import org.miejski.recommendations.parser.DoubleFormatter
+
 import scala.math.{pow, sqrt}
 
 class PearsonCorrelation {
@@ -7,7 +9,7 @@ class PearsonCorrelation {
 
 }
 
-object PearsonCorrelation {
+object PearsonCorrelation extends DoubleFormatter {
 
   def compute(user1Ratings: Seq[Option[Double]], user2Ratings: Seq[Option[Double]]): Double = {
 
@@ -24,7 +26,7 @@ object PearsonCorrelation {
       .map(s => (s._1 - user1Mean) * (s._2 - user2Mean)).sum
 
     val correlation = counter / (singleUserDenominator(user1SharedRatings, user1Mean) * singleUserDenominator(user2SharedRatings, user2Mean))
-    "%.4f".format(correlation).toDouble
+    format(correlation)
   }
 
   def singleUserDenominator(userRatings: Seq[Double], mean: Double) = {

@@ -27,7 +27,7 @@ object Neighbours {
       .map(toSortedUserJoin)
       .distinct()
 
-    val uniqueMappings = uniqueUsersPairs.map(r => (r, None)) // for join with correlations
+    val uniqueMappings = uniqueUsersPairs.map((_, None)) // for join with correlations
 
     val lengths = joinedUsers.map(s => (s._1._2.length, s._2._2.length)).collect()
     val correlations = joinedUsers.map(ratings => ((ratings._1._1, ratings._2._1), PearsonCorrelation.compute(ratings._1._2, ratings._2._2)))

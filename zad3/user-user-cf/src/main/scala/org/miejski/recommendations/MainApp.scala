@@ -12,6 +12,8 @@ class MainApp {
 
 object MainApp {
 
+  val interestingUsers = List("3712", "3525", "3867", "89")
+
   def main(args: Array[String]) {
     val sparkConfig = new SparkConf().setAppName("UserUserCollaborativeFiltering").setMaster("local[2]")
     val sc = SparkContext.getOrCreate(sparkConfig)
@@ -24,12 +26,13 @@ object MainApp {
       .load("src/main/resources/coursera_recommendations_user-row.csv")
 
     val usersRatings = ratingsDataframe.rdd.map(RatingsReader.parseRatings)
-
     val neighbours = Neighbours(usersRatings)
+
+    val neighboursFound = interestingUsers.map(user => (user, neighbours.findFor(user, 5)))
 
     val ratings = RatingsReader.readRatings("src/main/resources/coursera_recommendations_movie-row.csv", sqlContext)
 
-    val recommendedMovies = MoviesRecommender(neighbours, ratings).forUser("3712")
+    val bestMoviesForUsers = interestingUsers.map(user => (user, MoviesRecommender(neighbours, ratings).forUser(user, top = 3)))
 
     println()
   }
