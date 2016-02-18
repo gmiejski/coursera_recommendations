@@ -3,25 +3,31 @@ package org.miejski.recommendations.neighbours
 import org.apache.spark.rdd.RDD
 import org.miejski.recommendations.correlation.PearsonCorrelation
 
-class Neighbours(topNeighbours: RDD[(String, Seq[(String, Double)])]) {
+class Neighbours(topNeighbours: RDD[(String, Seq[(String, Double)])]) extends Serializable {
 
-  def findFor(user: String) = {
-    topNeighbours.filter(n => n._1.equals(user)).flatMap(n => n._2)
+  def findFor(user: String, top: Int = 5) = {
+    implicit val ord: Ordering[(String, Double)] = new Ordering[(String, Double)] {
+      override def compare(x: (String, Double), y: (String, Double)): Int = y._2.compare(x._2)
+    }
+    topNeighbours.filter(n => n._1.equals(user)).flatMap(_._2).takeOrdered(top)
   }
 
   def printNeighbours(user: String, top: Int = 5) = {
     println(s"Neighbours for user: $user")
-    findFor(user).collect().take(top).foreach(println)
+    findFor(user).take(top).foreach(println)
   }
 }
 
 object Neighbours {
 
-  def apply(userRatings: RDD[(String, scala.Seq[Option[Double]])], uM: RDD[(String, String)]): Neighbours = {
-
-    val uniqueMappings = uM.map(r => (r, None)) // for join with correlations
-    assert(uniqueMappings.count() == 325)
+  def apply(userRatings: RDD[(String, scala.Seq[Option[Double]])]): Neighbours = {
     val joinedUsers = userRatings.cartesian(userRatings).cache()
+
+    val uniqueUsersPairs: RDD[(String, String)] = joinedUsers.map(r => (r._1._1, r._2._1))
+      .map(toSortedUserJoin)
+      .distinct()
+
+    val uniqueMappings = uniqueUsersPairs.map(r => (r, None)) // for join with correlations
 
     val lengths = joinedUsers.map(s => (s._1._2.length, s._2._2.length)).collect()
     val correlations = joinedUsers.map(ratings => ((ratings._1._1, ratings._2._1), PearsonCorrelation.compute(ratings._1._2, ratings._2._2)))
@@ -36,5 +42,8 @@ object Neighbours {
     new Neighbours(topNeighbours)
   }
 
+  def toSortedUserJoin(userIds: (String, String)): (String, String) = {
+    if (userIds._1 < userIds._2) userIds else userIds.swap
+  }
 
 }
