@@ -44,14 +44,15 @@ object MoviesRecommender {
     if (delimeter == 0) Option.empty else Option(counter / delimeter)
   }
 
-  //  def averageNormalizedPrediction(user: UserAverageRating, neighbours: Seq[NeighbourInfo], neighboursRatings: Seq[UserRating]): Option[Double] = {
-  //    val neighboursSimiliarityMap = neighbours.groupBy(_._1).mapValues(_.map(_._2))
-  //    val ratingWithSimiliarity = neighboursRatings.map(r => (r.user, r.rating, neighboursSimiliarityMap.getOrElse(r.user, Seq.empty).head))
-  //    val counter = ratingWithSimiliarity.map(userRating => userRating._2.getOrElse(0.0) * userRating._3).sum
-  //    val delimeter = ratingWithSimiliarity.map(ur => if (ur._2.isEmpty) 0 else ur._3).sum
-  //
-  //    if (delimeter == 0) Option.empty else Option(counter / delimeter)
-  //  }
+  def averageNormalizedPrediction(user: UserAverageRating, neighbours: Seq[NeighbourInfo], neighboursRatings: Seq[UserRating]): Option[Double] = {
+    val neighboursSimiliarityMap = neighbours.map(neighbour => (neighbour.neighbourName, neighbour))
+      .groupBy(_._1).mapValues(_.map(_._2))
+    val ratingWithSimiliarity = neighboursRatings.map(r => (r.user, r.rating, neighboursSimiliarityMap.getOrElse(r.user, Seq.empty).head))
+    val counter = ratingWithSimiliarity.filter(userRating => userRating._2.isDefined).map(userRating => (userRating._2.get - userRating._3.neighbourAverageRating) * userRating._3.similarity).sum
+    val delimeter = ratingWithSimiliarity.map(ur => if (ur._2.isEmpty) 0 else ur._3.similarity).sum
+
+    if (delimeter == 0) Option.empty else Option(user.averageRating + (counter / delimeter))
+  }
 
 }
 

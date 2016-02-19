@@ -35,6 +35,9 @@ object MainApp {
     val bestMoviesForUsers = interestingUsers.map(user => (user, new MoviesRecommender(neighbours, ratings, MoviesRecommender.standardPrediction)
       .forUser(user, top = 3)))
 
+    val bestNormalizedMoviesForUsers = interestingUsers.map(user => (user, new MoviesRecommender(neighbours, ratings, MoviesRecommender.averageNormalizedPrediction)
+      .forUser(user, top = 3)))
+
     println()
   }
 
