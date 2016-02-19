@@ -32,7 +32,8 @@ object MainApp {
 
     val ratings = RatingsReader.readRatings("src/main/resources/coursera_recommendations_movie-row.csv", sqlContext)
 
-    val bestMoviesForUsers = interestingUsers.map(user => (user, MoviesRecommender(neighbours, ratings).forUser(user, top = 3)))
+    val bestMoviesForUsers = interestingUsers.map(user => (user, new MoviesRecommender(neighbours, ratings, MoviesRecommender.standardPrediction)
+      .forUser(user, top = 3)))
 
     println()
   }

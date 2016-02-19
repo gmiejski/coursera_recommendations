@@ -11,7 +11,7 @@ class PearsonCorrelation {
 
 object PearsonCorrelation extends DoubleFormatter {
 
-  def compute(user1Ratings: Seq[Option[Double]], user2Ratings: Seq[Option[Double]]): Double = {
+  def compute(user1Ratings: Seq[Option[Double]], user2Ratings: Seq[Option[Double]]): NeighboursDetails = {
 
     val filtered: Seq[(Double, Double)] = user1Ratings.zip(user2Ratings)
       .collect { case (Some(a), Some(b)) => (a, b) }
@@ -19,14 +19,17 @@ object PearsonCorrelation extends DoubleFormatter {
     val user1SharedRatings = filtered.map(_._1)
     val user2SharedRatings = filtered.map(_._2)
 
-    val user1Mean = mean(user1SharedRatings)
-    val user2Mean = mean(user2SharedRatings)
+    val user1SharedMean = mean(user1SharedRatings)
+    val user2SharedMean = mean(user2SharedRatings)
+
+    val user1TotalMean = mean(user1Ratings.collect { case Some(a) => a })
+    val user2TotalMean = mean(user2Ratings.collect { case Some(a) => a })
 
     val counter = filtered
-      .map(s => (s._1 - user1Mean) * (s._2 - user2Mean)).sum
+      .map(s => (s._1 - user1SharedMean) * (s._2 - user2SharedMean)).sum
 
-    val correlation = counter / (singleUserDenominator(user1SharedRatings, user1Mean) * singleUserDenominator(user2SharedRatings, user2Mean))
-    format(correlation)
+    val correlation = counter / (singleUserDenominator(user1SharedRatings, user1SharedMean) * singleUserDenominator(user2SharedRatings, user2SharedMean))
+    NeighboursDetails(format(correlation), format(user1SharedMean), format(user2SharedMean), user1TotalMean, user2TotalMean)
   }
 
   def singleUserDenominator(userRatings: Seq[Double], mean: Double) = {
@@ -36,17 +39,11 @@ object PearsonCorrelation extends DoubleFormatter {
   private def mean(ratings: Seq[Double]): Double = {
     ratings.sum / ratings.length
   }
-
-  private def meanOptional(ratings: Seq[Option[Double]]): Double = {
-
-    val realRatings = ratings.flatten
-    // fuckup
-    // ratings.filter(_ != null) -> nic nie wyfiltrowuje
-    // ratings.filter(_ != 0.0) -> wyfiltrowuje
-
-    realRatings.sum / realRatings.length
-  }
 }
 
-
+case class NeighboursDetails(similarity: Double,
+                             user1SharedAverageRating: Double,
+                             user2SharedAverageRating: Double,
+                             user1AverageRating: Double,
+                             user2AverageRating: Double)
 
