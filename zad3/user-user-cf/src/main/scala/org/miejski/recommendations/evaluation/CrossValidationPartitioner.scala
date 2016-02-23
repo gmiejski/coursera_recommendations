@@ -5,8 +5,13 @@ import org.miejski.recommendations.evaluation.model.User
 
 class CrossValidationPartitioner {
 
-  def split(usersRatings: RDD[User], k: Int = 5): List[RDD[User]] = {
+  def allCombinations(usersRatings: RDD[User], k: Int = 5): List[(RDD[User], List[RDD[User]])] = {
     val weights = List.fill(k)(1.0 / k)
-    usersRatings.randomSplit(weights.toArray, 1).toList
+    val partitions = usersRatings.randomSplit(weights.toArray, 1).toList
+
+    val indexedPartitions = partitions.zipWithIndex
+    indexedPartitions.map(iP => {
+      (iP._1, indexedPartitions.filter(p => !p._2.equals(iP._2)).map(_._1))
+    })
   }
 }

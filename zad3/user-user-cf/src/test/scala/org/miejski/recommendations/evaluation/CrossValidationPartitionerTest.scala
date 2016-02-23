@@ -20,8 +20,9 @@ class CrossValidationPartitionerTest extends SparkSuite {
     val usersRatings = (1 to 1000).map(id => new User(id.toString, generateRatings(movies)))
     val usersRatingsRdd = sc.parallelize(usersRatings)
 
-    val splitted = new CrossValidationPartitioner().split(usersRatingsRdd, k)
+    val partitionings = new CrossValidationPartitioner().allCombinations(usersRatingsRdd, k)
 
-    splitted should have length k
+    partitionings should have length k
+    partitionings.foreach(p => p._2 should have length k - 1)
   }
 }
