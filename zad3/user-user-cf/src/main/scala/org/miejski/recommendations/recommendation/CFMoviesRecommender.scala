@@ -1,6 +1,7 @@
 package org.miejski.recommendations.recommendation
 
 import org.apache.spark.rdd.RDD
+import org.miejski.recommendations.evaluation.model.{MovieRating, User}
 import org.miejski.recommendations.model.{Movie, UserRating}
 import org.miejski.recommendations.neighbours.{NeighbourInfo, Neighbours, UserAverageRating}
 import org.miejski.recommendations.parser.DoubleFormatter
@@ -9,6 +10,25 @@ class MoviesRecommender(neighbours: Neighbours,
                         moviesRatings: RDD[(Movie, Seq[UserRating])],
                         predictionMethod: (UserAverageRating, Seq[NeighbourInfo], Seq[UserRating]) => Option[Double]) extends Serializable
   with DoubleFormatter {
+  def findRatings(user: User): List[MovieRating] = {
+
+    val moviesIdToPredictRatings = user.ratings.map(ratings => ratings.movie.id)
+
+    val closestNeighbours: Seq[NeighbourInfo] = neighbours.findFor(user.id)
+    val closestNeighboursIds = closestNeighbours.map(_.neighbourName)
+
+    val userAverageRating = neighbours.getUserAverageRating(user.id)
+
+    val neighboursRatingsForGivenMovies = moviesRatings.filter(movieRating => moviesIdToPredictRatings.contains(movieRating._1.id))
+      .map(mRating => (mRating._1, mRating._2.filter(userRating => closestNeighboursIds.contains(userRating.user))))
+
+    val predictedRatings = neighboursRatingsForGivenMovies
+      .map(nr => (nr._1, predictionMethod(userAverageRating, closestNeighbours, nr._2)))
+      .map(rating => MovieRating(rating._1, rating._2))
+      .collect()
+
+    predictedRatings.toList
+  }
 
   def forUser(user: String, top: Int = 0): Seq[(Movie, Double)] = {
     val closestNeighbours: Seq[NeighbourInfo] = neighbours.findFor(user)
