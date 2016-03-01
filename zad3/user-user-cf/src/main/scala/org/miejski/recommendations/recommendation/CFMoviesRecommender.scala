@@ -6,10 +6,11 @@ import org.miejski.recommendations.model.{Movie, UserRating}
 import org.miejski.recommendations.neighbours.{NeighbourInfo, Neighbours, UserAverageRating}
 import org.miejski.recommendations.parser.DoubleFormatter
 
-class MoviesRecommender(neighbours: Neighbours,
-                        moviesRatings: RDD[(Movie, Seq[UserRating])],
-                        predictionMethod: (UserAverageRating, Seq[NeighbourInfo], Seq[UserRating]) => Option[Double]) extends Serializable
-  with DoubleFormatter {
+class CFMoviesRecommender(neighbours: Neighbours,
+                          moviesRatings: RDD[(Movie, Seq[UserRating])],
+                          predictionMethod: (UserAverageRating, Seq[NeighbourInfo], Seq[UserRating]) => Option[Double]) extends Serializable
+  with DoubleFormatter
+  with MovieRecommender {
   def findRatings(user: User): List[MovieRating] = {
 
     val moviesIdToPredictRatings = user.ratings.map(ratings => ratings.movie.id)
@@ -47,13 +48,9 @@ class MoviesRecommender(neighbours: Neighbours,
       .reverse
     if (top <= 0) moviesSortedByPredictedRating else moviesSortedByPredictedRating.take(top)
   }
-
-  def toNeighboursRatingWithSimiliarity(movies: RDD[Movie], closestNeighbours: RDD[(String, Double)], s: (Movie, Seq[UserRating])): RDD[UserRatingWithSimilarity] = {
-    movies.sparkContext.parallelize(s._2).map(ur => (ur.user, ur.rating)).join(closestNeighbours).map(urs => UserRatingWithSimilarity(urs._1, urs._2._1, urs._2._2))
-  }
 }
 
-object MoviesRecommender {
+object CFMoviesRecommender {
 
   def standardPrediction(user: UserAverageRating, neighbours: Seq[NeighbourInfo], neighboursRatings: Seq[UserRating]): Option[Double] = {
     val neighboursSimiliarityMap = neighbours.groupBy(_.neighbourName).mapValues(_.map(_.similarity))
@@ -76,6 +73,4 @@ object MoviesRecommender {
 
 }
 
-
 case class UserRatingWithSimilarity(user: String, rating: Option[Double], similarity: Double)
-

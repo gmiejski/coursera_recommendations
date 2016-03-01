@@ -2,22 +2,26 @@ package org.miejski.recommendations.evaluation
 
 import org.apache.spark.rdd.RDD
 import org.miejski.recommendations.evaluation.model.{MovieRating, User}
-import org.miejski.recommendations.model.UserRating
+import org.miejski.recommendations.model.{Movie, UserRating}
 import org.miejski.recommendations.neighbours.Neighbours
-import org.miejski.recommendations.recommendation.MoviesRecommender
+import org.miejski.recommendations.recommendation.MovieRecommender
 
 class RecommenderEvaluator extends Serializable {
 
-  def evaluateRecommender(usersRatings: RDD[User]) = {
+  def evaluateRecommender(usersRatings: RDD[User],
+                          dataSplitter: (RDD[User]) => List[ValidationDataSplit],
+                          recommenderCreator: (Neighbours, RDD[(Movie, Seq[UserRating])]) => MovieRecommender) = {
     //    val sortedRatingsByTime = usersRatings.map(user => User(user.id, user.ratings.sortBy(_.rating)))
-    val crossValidationSplit = new CrossValidationPartitioner().allCombinations(usersRatings)
 
-    val foldsErrors = crossValidationSplit.map(foldError)
+    val validationDataSplit = dataSplitter(usersRatings)
+
+    val foldsErrors = validationDataSplit.map(dataSplit => foldError(dataSplit, recommenderCreator))
 
     foldsErrors.sum / foldsErrors.length
   }
 
-  def foldError(crossValidation: ValidationDataSplit): Double = {
+  def foldError(crossValidation: ValidationDataSplit,
+                recommenderCreator: (Neighbours, RDD[(Movie, Seq[UserRating])]) => MovieRecommender): Double = {
 
     val furtherTestDataSplit = crossValidation.testData.map(user => {
       val c = user.ratings.length
@@ -33,9 +37,10 @@ class RecommenderEvaluator extends Serializable {
     val moviesRatings = realTrainingUsers.flatMap(s => s.ratings.map(rating => (rating.movie, UserRating(s.id, rating.rating))))
       .groupByKey().map(s => (s._1, s._2.toSeq))
     val neighbours: Neighbours = Neighbours.fromUsers(realTrainingUsers)
-    val recommender = new MoviesRecommender(neighbours, moviesRatings, MoviesRecommender.standardPrediction)
 
-    val usersPredictionsErrors = realTestUsers.map(user => calculateRootMeanSquareError(user, recommender.findRatings(user))).collect()
+    val recommender = recommenderCreator(neighbours, moviesRatings)
+
+    val usersPredictionsErrors = realTestUsers.collect().map(user => calculateRootMeanSquareError(user, recommender.findRatings(user)))
 
     usersPredictionsErrors.sum / usersPredictionsErrors.length
 
@@ -43,7 +48,8 @@ class RecommenderEvaluator extends Serializable {
 
   def calculateRootMeanSquareError(user: User, predictedRatings: List[MovieRating]): Double = {
     assert(predictedRatings.length == user.ratings.length)
-    val squaredRatingsDiff = (user.ratings ++ predictedRatings).groupBy(_.movie)
+    val ratingsGroupedByMovie: Map[Movie, List[MovieRating]] = (user.ratings ++ predictedRatings).groupBy(_.movie)
+    val squaredRatingsDiff = ratingsGroupedByMovie
       .map(kv => kv._2.map(_.rating.get).reduce((a, b) => (a - b) * (a - b)))
 
     math.sqrt(squaredRatingsDiff.sum / predictedRatings.length)

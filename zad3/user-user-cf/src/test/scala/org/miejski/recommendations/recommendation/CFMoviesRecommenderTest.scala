@@ -6,7 +6,7 @@ import org.scalatest.{FunSuite, Matchers}
 
 import scala.util.Random
 
-class MoviesRecommenderTest extends FunSuite
+class CFMoviesRecommenderTest extends FunSuite
   with Matchers {
 
   test("predicting users rating when only single user matters") {
@@ -20,7 +20,7 @@ class MoviesRecommenderTest extends FunSuite
       UserRating("3853", Option.empty))
 
     // coursera-dataset movie(id = 641) recommendation
-    val rating = MoviesRecommender.standardPrediction(UserAverageRating("u1", 3.0), neighbours, neighboursRatings)
+    val rating = CFMoviesRecommender.standardPrediction(UserAverageRating("u1", 3.0), neighbours, neighboursRatings)
 
     rating.get should equal(5.0)
   }
@@ -34,7 +34,7 @@ class MoviesRecommenderTest extends FunSuite
       UserRating("3", Option(3.0)),
       UserRating("4", Option.empty))
 
-    val rating = MoviesRecommender.standardPrediction(UserAverageRating("u1", 3.0), neighbours, neighboursRatings)
+    val rating = CFMoviesRecommender.standardPrediction(UserAverageRating("u1", 3.0), neighbours, neighboursRatings)
 
     rating.get should equal(3.5)
   }
