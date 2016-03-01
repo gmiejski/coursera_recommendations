@@ -2,9 +2,11 @@ package org.miejski.recommendations
 
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
+import org.miejski.recommendations.evaluation.model.{MovieRating, User}
+import org.miejski.recommendations.evaluation.{CrossValidationPartitioner, RecommenderEvaluator}
 import org.miejski.recommendations.neighbours.Neighbours
 import org.miejski.recommendations.parser.RatingsReader
-import org.miejski.recommendations.recommendation.MoviesRecommender
+import org.miejski.recommendations.recommendation.CFMoviesRecommender
 
 class MainApp {
 
@@ -30,15 +32,24 @@ object MainApp {
 
     val neighboursFound = interestingUsers.map(user => (user, neighbours.findFor(user, 5)))
 
-    val ratings = RatingsReader.readRatings("src/main/resources/coursera_recommendations_movie-row.csv", sqlContext)
+    val moviesRatings = RatingsReader.readRatings("src/main/resources/coursera_recommendations_movie-row.csv", sqlContext)
 
-    val bestMoviesForUsers = interestingUsers.map(user => (user, new MoviesRecommender(neighbours, ratings, MoviesRecommender.standardPrediction)
+    val bestMoviesForUsers = interestingUsers.map(user => (user, new CFMoviesRecommender(neighbours, moviesRatings, CFMoviesRecommender.standardPrediction)
       .forUser(user, top = 3)))
 
-    val bestNormalizedMoviesForUsers = interestingUsers.map(user => (user, new MoviesRecommender(neighbours, ratings, MoviesRecommender.averageNormalizedPrediction)
+    val bestNormalizedMoviesForUsers = interestingUsers.map(user => (user, new CFMoviesRecommender(neighbours, moviesRatings, CFMoviesRecommender.averageNormalizedPrediction)
       .forUser(user, top = 3)))
 
-    println()
+    val users = moviesRatings.flatMap(mR => mR._2.map(r => (r.user, MovieRating(mR._1, r.rating))))
+      .filter(_._2.rating.nonEmpty)
+      .groupByKey()
+      .map(s => User(s._1, s._2.toList))
+
+    val error = new RecommenderEvaluator().evaluateRecommender(users,
+      (dataSplitter) => new CrossValidationPartitioner().allCombinations(dataSplitter),
+      (n, mRatings) => new CFMoviesRecommender(neighbours, moviesRatings, CFMoviesRecommender.averageNormalizedPrediction))
+
+    println(s"Final error : $error")
   }
 
 }
