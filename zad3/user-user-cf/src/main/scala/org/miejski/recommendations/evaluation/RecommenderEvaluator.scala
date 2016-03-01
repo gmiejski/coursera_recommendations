@@ -42,7 +42,9 @@ class RecommenderEvaluator extends Serializable {
 
     val usersPredictionsErrors = realTestUsers.collect().map(user => calculateRootMeanSquareError(user, recommender.findRatings(user)))
 
-    usersPredictionsErrors.sum / usersPredictionsErrors.length
+    val singleFoldAvgError: Double = usersPredictionsErrors.sum / usersPredictionsErrors.length
+    println(s"Single fold error: $singleFoldAvgError")
+    singleFoldAvgError
 
   }
 
@@ -50,8 +52,11 @@ class RecommenderEvaluator extends Serializable {
     assert(predictedRatings.length == user.ratings.length)
     val ratingsGroupedByMovie: Map[Movie, List[MovieRating]] = (user.ratings ++ predictedRatings).groupBy(_.movie)
     val squaredRatingsDiff = ratingsGroupedByMovie
+      .filter(_._2.count(_.rating.nonEmpty) == 2)
       .map(kv => kv._2.map(_.rating.get).reduce((a, b) => (a - b) * (a - b)))
 
-    math.sqrt(squaredRatingsDiff.sum / predictedRatings.length)
+    val singleUserError: Double = math.sqrt(squaredRatingsDiff.sum / predictedRatings.length)
+    println(s"${user.id} error: $singleUserError")
+    singleUserError
   }
 }

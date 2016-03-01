@@ -34,13 +34,14 @@ object MainApp {
 
     val moviesRatings = RatingsReader.readRatings("src/main/resources/coursera_recommendations_movie-row.csv", sqlContext)
 
-    //    val bestMoviesForUsers = interestingUsers.map(user => (user, new CFMoviesRecommender(neighbours, moviesRatings, CFMoviesRecommender.standardPrediction)
-    //      .forUser(user, top = 3)))
-    //
-    //    val bestNormalizedMoviesForUsers = interestingUsers.map(user => (user, new CFMoviesRecommender(neighbours, moviesRatings, CFMoviesRecommender.averageNormalizedPrediction)
-    //      .forUser(user, top = 3)))
+    val bestMoviesForUsers = interestingUsers.map(user => (user, new CFMoviesRecommender(neighbours, moviesRatings, CFMoviesRecommender.standardPrediction)
+      .forUser(user, top = 3)))
+
+    val bestNormalizedMoviesForUsers = interestingUsers.map(user => (user, new CFMoviesRecommender(neighbours, moviesRatings, CFMoviesRecommender.averageNormalizedPrediction)
+      .forUser(user, top = 3)))
 
     val users = moviesRatings.flatMap(mR => mR._2.map(r => (r.user, MovieRating(mR._1, r.rating))))
+      .filter(_._2.rating.nonEmpty)
       .groupByKey()
       .map(s => User(s._1, s._2.toList))
 
@@ -48,7 +49,7 @@ object MainApp {
       (dataSplitter) => new CrossValidationPartitioner().allCombinations(dataSplitter),
       (n, mRatings) => new CFMoviesRecommender(neighbours, moviesRatings, CFMoviesRecommender.averageNormalizedPrediction))
 
-    println()
+    println(s"Final error : $error")
   }
 
 }
